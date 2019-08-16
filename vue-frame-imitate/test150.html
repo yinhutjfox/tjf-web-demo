@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        .a:hover {
+            cursor : pointer
+        }
+    </style>
+</head>
+<body>
+    <div class = "a">sdfsdfsfd</div>
+    <script>
+        let a = {};
+        Object.defineProperty(a , "b" , {
+            enumerable : true ,
+            configurable : true ,
+            set : function (data) {
+                this["__proto__"].b = data
+                console.warn("a.b的值变为" + data)
+            } ,
+            get : function () {
+                console.warn("获取a的值")
+                return this["__proto__"].b;
+            }
+        })
+        function ss(q) {
+            console.log(q)
+            console.log(this)
+        }
+        ss.apply(a , 1)
+    </script>
+</body>
+</html>

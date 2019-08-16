@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Polygon</title>
+    <style>
+        html , body
+        {
+            width : 100% ;
+            height : 100% ;
+            background : black
+        }
+        *
+        {
+            margin : 0px ;
+            padding : 0px
+        }
+        canvas
+        {
+            width : 100% ;
+            height : 100%
+        }
+    </style>
+</head>
+<body>
+<canvas id = "mainCanvas"></canvas>
+<script>
+	let mainCanvas = document.querySelector("#mainCanvas");
+	let mainContext = mainCanvas.getContext("2d");
+
+	let width = window.innerWidth;
+	let height = window.innerHeight;
+	let xAmount = 30;
+	let yAmount = 30;
+	let xSegment = 10;
+	let ySegment = 10;
+	let segmentWidth = width / xSegment;
+	let segmentHeight = height / ySegment;
+	let serialNum = 0;
+	mainCanvas.width = width;
+	mainCanvas.height = height;
+    let pointList = [];
+    let segmentList = [];
+    let lineList = [];
+
+    class Segment
+    {
+    	constructor(xMin , xMax , yMin , yMax)
+        {
+        	this.xMin = xMin;
+        	this.xMax = xMax;
+        	this.yMin = yMin;
+        	this.yMax = yMax;
+        	this.containPoint = [];
+        }
+
+        isEmpty()
+        {
+        	if(0 == this.containPoint.length)
+            {
+            	return true;
+            }
+            else
+            {
+            	return false;
+            }
+        }
+
+        registerPoint(point)
+        {
+        	this.containPoint.push(point);
+        }
+
+        removePoint(point)
+        {
+        	this.containPoint.splice(this.containPoint.indexOf(point) , 1);
+        }
+    }
+
+	class Point
+	{
+		constructor(x , y , _serialNum , _segmentList)
+		{
+			this.serialNum = _serialNum;
+			this.segmentList = _segmentList;
+			this.x = x;
+			this.y = y;
+			this.velocityX = 1.5 - Math.random() * 3;
+			this.velocityY = 1.5 - Math.random() * 3;
+			this.segmentIn = this.segmentList[~~(this.x / segmentWidth) + ~~(this.y / segmentHeight) * xSegment];
+			this.segmentIn.registerPoint(this);
+			this.isOrigin = false;
+			this.isChecked = false;
+		}
+
+		originToggle()
+        {
+        	this.isOrigin = !this.isOrigin;
+        	return this.isOrigin;
+        }
+
+        segmentArround()
+        {
+        	let index = this.segmentList.indexOf(this.segmentIn);
+        	return {
+		        up : index - xSegment < 0 ? null : this.segmentList[index - xSegment] ,
+	            down : index + xSegment > xSegment * ySegment - 1 ? null : this.segmentList[index + xSegment] ,
+	            left : index - 1 < 0 || ~~((index - 1) / xSegment) != ~~(index / xSegment) ? null : this.segmentList[index - 1] ,
+	            right : index + 1 > xSegment * ySegment - 1 || ~~((index + 1) / xSegment) != ~~(index / xSegment) ? null : this.segmentList[index + 1]
+	        }
+        	// let up = index - xSegment < 0 ? null : this.segmentList[index - xSegment];
+        	// let down = index + xSegment > xSegment * ySegment - 1 ? null : this.segmentList[index + xSegment];
+        	// let left = index - 1 < 0 || ~~((index - 1) / xSegment) != ~~(index / xSegment) ? null : this.segmentList[index - 1];
+	        // let right = index + 1 > xSegment * ySegment - 1 || ~~((index + 1) / xSegment) != ~~(index / xSegment) ? null : this.segmentList[index + 1];
+        }
+
+		isCrashWall()
+		{
+			0 > this.x && (this.velocityX *= -1 , this.x = 1);
+			width - 5 < this.x && (this.velocityX *= -1 , this.x = width - 5);
+			0 > this.y && (this.velocityY *= -1 , this.y = 1);
+			height - 5 < this.y && (this.velocityY *= -1 , this.y = height - 5);
+		}
+
+		segmentCheck()
+        {
+        	this.segmentIn.removePoint(this);
+        	this.segmentIn = this.segmentList[~~(this.x / segmentWidth) + ~~(this.y / segmentHeight) * ySegment];
+        	this.segmentIn.registerPoint(this);
+        }
+
+		move()
+		{
+			this.x += this.velocityX;
+			this.y += this.velocityY;
+			this.isCrashWall();
+			this.segmentCheck();
+		}
+	}
+
+	class Line
+    {
+    	constructor(point1 , point2 , _distanceRang)
+        {
+        	this.point1 = point1;
+        	this.point2 = point2;
+            this.offset = 0;
+            this.distanceRang = _distanceRang;
+            this.distancePow = (this.point1.x - this.point2.x) * (this.point1.x - this.point2.x) + (this.point1.y - this.point2.y) * (this.point1.y - this.point2.y);
+            this.incTimePre = (20 * 1000) / (width * width + height * height);
+            this.offsetInc = 1 / (this.incTimePre * this.distancePow);
+
+        }
+
+        resetIsChecked()
+        {
+        	this.point1.isChecked = false;
+        	this.point2.isChecked = false;
+        }
+
+        isInRang()
+        {
+        	if(this.distancePow < this.distanceRang.minPow || this.distancePow > this.distanceRang.maxPow)
+            {
+            	return false;
+            }
+            else
+            {
+            	return true;
+            }
+        }
+
+        draw(context)
+        {
+        	if(this.point1.isOrigin)
+            {
+            	return;
+            }
+	        this.distancePow = (this.point1.x - this.point2.x) * (this.point1.x - this.point2.x) + (this.point1.y - this.point2.y) * (this.point1.y - this.point2.y);
+	        this.offsetInc = 1 / (this.incTimePre * this.distancePow);
+        	if(!this.point1.isOrigin)
+            {
+                if(1 > this.offset)
+                {
+	                let gradient = context.createLinearGradient(this.point1.x , this.point1.y , this.point2.x , this.point2.y);
+	                gradient.addColorStop(0 , `rgba(255 , 0 , 0 , 1)`);
+	                gradient.addColorStop(this.offset , `rgba(255 , 0 , 0 , ${this.offset})`);
+	                gradient.addColorStop(1 , `rgba(255 , 0 , 0 , 0)`);
+	                context.strokeStyle = gradient;
+	                this.offset += this.offsetInc;
+                }
+                else
+                {
+                	context.strokeStyle = "red"
+                }
+                context.beginPath();
+                context.moveTo(this.point1.x , this.point1.y);
+                context.lineTo(this.point2.x , this.point2.y);
+                context.stroke();
+                context.closePath();
+            }
+        }
+    }
+
+    for(let i = 0 ; i < ySegment ; ++i)
+    {
+    	for(let j = 0 ; j < xSegment ; ++j)
+        {
+        	segmentList.push(new Segment(segmentWidth * j , segmentWidth * (j + 1) , segmentHeight * i , segmentHeight * (i + 1)));
+        }
+    }
+
+	for(let i = 0 ; i < xAmount ; ++i)
+	{
+		for(let j = 0 ; j < yAmount ; ++j)
+		{
+			pointList.push(new Point(Math.random() * (width / xAmount) + (width / xAmount) * j ,
+				Math.random() * (height / yAmount) + (height / yAmount) * i , serialNum++ , segmentList));
+		}
+	}
+
+	let pointTest = pointList[500];
+    pointTest.originToggle();
+    let distanceRangPow = {
+    	minPow : 500 ,
+        maxPow : 5000
+    }
+
+    function getDistancePow(point1 , point2)
+    {
+    	return (point1.x - point2.x) * (point1.x - point2.x) + (point1.y - point2.y) * (point1.y - point2.y);
+    }
+
+    function findLine(point , _distancePow)
+    {
+        let distancePow = _distancePow;
+        point.isChecked = true;
+        let seg = point.segmentArround();
+        let pointAround = point.segmentIn.containPoint;
+	    // let pointAround = pointList;
+        // if(null != seg.up){pointAround = pointAround.concat(seg.up.containPoint)}
+	    // if(null != seg.down){pointAround = pointAround.concat(seg.down.containPoint)}
+	    // if(null != seg.left){pointAround = pointAround.concat(seg.left.containPoint)}
+	    // if(null != seg.right){pointAround = pointAround.concat(seg.right.containPoint)}
+	    // console.log(pointAround);
+        for(let i = 0 ; i < pointAround.length ; ++i)
+        {
+        	if(point == pointAround[i])
+            {
+            	continue;
+            }
+            if(getDistancePow(point , pointAround[i]) > distancePow.minPow && getDistancePow(point , pointAround[i]) < distancePow.maxPow)
+            {
+
+	            lineList.push(new Line(point, pointAround[i], distancePow));
+	            if (!pointAround[i].isChecked)
+	            {
+		            findLine(pointAround[i], distancePow);
+	            }
+            }
+        }
+    }
+
+    // findLine(pointTest , distanceRangPow);
+    console.log(lineList);
+    console.log(segmentWidth , segmentHeight);
+
+	function animation()
+    {
+		mainContext.clearRect(0, 0, width, height);
+		pointList.forEach(item => {
+			mainContext.fillStyle = "rgba(255 , 255 , 0 , 0)";
+			mainContext.beginPath();
+			mainContext.arc(item.x, item.y, 2, 0, Math.PI * 2);
+			mainContext.fill();
+			mainContext.closePath();
+			item.move();
+		});
+		for(let i = 0 ; i < lineList.length ; ++i)
+        {
+        	lineList[i].resetIsChecked();
+        	if(!lineList[i].isInRang())
+            {
+            	lineList.splice(i , 1);
+            	--i;
+            }
+	        lineList[i].draw(mainContext);
+        }
+	}
+
+	function d()
+    {
+	    findLine(pointTest , distanceRangPow);
+	    animation();
+    }
+	setInterval(d , 1000 / 20);
+</script>
+</body>
+</html>

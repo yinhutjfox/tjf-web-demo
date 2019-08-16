@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        html , body
+        {
+            width : 100% ;
+            height : 100% ;
+            background : black
+        }
+        *
+        {
+            margin : 0px ;
+            padding : 0px
+        }
+        canvas
+        {
+            width : 100% ;
+            height : 100% ;
+            position : absolute ;
+            top : 0 ;
+            left : 0
+        }
+    </style>
+</head>
+<body>
+    <canvas id = "myCanvas" ></canvas>
+    <script>
+        const PI = 3.141592653;
+        let myCanvas = document.querySelector("#myCanvas");
+        let myContext = myCanvas.getContext("2d");
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        myCanvas.width = width;
+        myCanvas.height = height;
+        function Ball(length , ir)
+        {
+        	this.t = 0;
+        	this.origin = [width / 2 , 0];
+        	this.r = 10 + ir * 0.1;
+        	this.l = length + ir * 0.2;
+        	this.angle = Math.PI / 12;
+        	this.current = Math.PI / 2 - this.angle;
+        	this.begin = Math.PI / 2 - this.angle;
+        	this.end = Math.PI / 2 + this.angle;
+        	// this.x = this.l * Math.cos(this.current) + this.origin[0]
+        	// this.y = this.l * Math.sin(this.current);
+	        this.x = this.l * Math.cos(Math.PI / 2 - this.angle) + this.origin[0];
+	        this.y = this.l * Math.sin(Math.PI / 2 - this.angle);
+        	this.v = this.angle / (PI / 2 * Math.sqrt(this.l * this.l * this.l / 9.18)) * 250;
+        	console.log(this.v);
+
+        	this.move = function()
+            {
+            	this.current += this.v;
+            	if(this.current < this.begin)
+                {
+                	this.v *= -1;
+                }
+                if(this.current > this.end)
+                {
+                	this.v *= -1;
+                }
+	            this.x = this.l * Math.cos(this.current) + this.origin[0];
+	            this.y = this.l * Math.sin(this.current);
+            };
+
+        	this.move2 = function()
+            {
+                let temp = this.angle * Math.cos(Math.sqrt(9.18 / this.l) * this.t);
+	            this.x = this.l * Math.cos(Math.PI / 2 - temp) + this.origin[0];
+	            this.y = this.l * Math.sin(Math.PI / 2 - temp);
+	            ++this.t;
+            };
+
+        	this.draw = function(context)
+            {
+	            context.beginPath();
+	            context.fillStyle = "red";
+	            context.arc(this.x , this.y , this.r , 0 , Math.PI * 2);
+	            context.fill();
+	            context.closePath();
+                this.move2();
+            };
+        }
+        let balls = [];
+        for(let i = 14 ; i < 30 ; ++i)
+        {
+        	balls.push(new Ball(10 + i * 19 , 0));
+        }
+
+        function animation()
+        {
+        	// myContext.fillStyle = "rgba(0 , 0 , 0 , 0.8)";
+        	// myContext.fillRect(0 , 0 , width , height);
+            myContext.clearRect(0 , 0 , width , height);
+            balls.forEach(ball =>{
+        		ball.draw(myContext);
+            })
+	        // balls[3].draw(myContext);
+        }
+        setInterval(animation , 1000 / 24);
+    </script>
+</body>
+</html>

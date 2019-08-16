@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <style>
+    body
+    {
+      background : white ;
+      overflow : hidden
+    }
+    canvas
+    {
+      width : 100% ;
+      height : 100%
+    }
+    *
+    {
+      margin : 0px ;
+      padding : 0px
+    }
+  </style>
+</head>
+<body>
+<input style = "display : none" type = "file" id = "img" accept = ".jpg" />
+<canvas id = "myCanvas"></canvas>
+
+  <script>
+
+    // 尺寸变换
+    let scale = 1.8;
+    let myCanvas = document.querySelector("#myCanvas");
+    let bufferCanvas = document.createElement("canvas");
+
+    let myContext = myCanvas.getContext("2d");
+    let bufferContext = bufferCanvas.getContext("2d");
+
+    let width = ~~(window.innerWidth / scale);
+    let height = ~~(window.innerHeight / scale);
+
+    let totalPoint = width * height;
+    let originImgData = null;
+    let backGroundImg = new Image();
+
+    //使用一维数组，提高地址查询效率，并减少越界概率，减少惩罚时间
+    let currentWave = new Array(totalPoint);
+    let nextWave = new Array(totalPoint);
+    for(let i = 0 ; i < totalPoint ; ++i)
+    {
+        currentWave[i] = 0;
+        nextWave[i] = 0;
+    }
+    let bufferImg = bufferContext.createImageData(width , height);
+    let offsetList = getOffsetList(1);
+    let mouseMoveFlag = true;
+
+    myCanvas.width = width;
+    myCanvas.height = height;
+    bufferCanvas.width = width;
+    bufferCanvas.height = height;
+
+    backGroundImg.src = "15.jpg";
+
+    //得出偏移参数
+    function getOffsetList(r)
+    {
+        let offsetList = [];
+        for(let x = r ; x > ~r ; --x)
+        {
+            for(let y = r ; y > ~r ; --y)
+            {
+                if(0 == x && 0 == y)
+                {
+                    continue;
+                }
+                if(r * r >= x * x + y * y)
+                {
+                    offsetList.push({xOffset : x , yOffset : y});
+                }
+            }
+        }
+        return offsetList;
+    }
+
+    //改函数根据当前状态的能量分布，计算下一个状态的能量分布，其也就是振幅分布
+    function makeWave()
+    {
+        let sum = 0;
+        for(let x = 0 ; x < width ; ++x)
+        {
+            for(let y = 0 ; y < height ; ++y)
+            {
+                for(let i = 0 ; i < offsetList.length ; ++i)
+                {
+                    if(0 > x + offsetList[i].xOffset){continue}
+                    if(width - 1 < x + offsetList[i].xOffset){continue}
+                    if(0 > y + offsetList[i].yOffset){continue}
+                    if(height - 1 < y + offsetList[i].yOffset){continue}
+                    sum += currentWave[x + offsetList[i].xOffset + (y + offsetList[i].yOffset) * width]
+                }
+                //此处按理说`波动模型是x0` = a(x1 + x2 + x2 + x4) + bx0`
+                //也也就是x0周边4点的总影响与x0下一时刻自身的状态的综合作用，这里这种计算简介的表达了x0的下一时刻预测状态
+                //实际上交换了currentWave与nextWave，这是的nextWave相当于在波峰与波谷之间切换，如此，这个动画实际上是在波动
+                //状态的波峰与波谷处切换
+                nextWave[x + y * width] = ((sum / 2)) - nextWave[x + y * width];
+                nextWave[x + y * width] -= (nextWave[x + y * width] >> 6);
+                nextWave[x + y * width] = ~~(nextWave[x + y * width]);
+                //前面如果对sum用位运算的方式求除法，损失的精度太高了？所以，求整放在了最后，但是必须要求整
+                //否则，水面永远平静不下来
+                sum = 0;
+            }
+        }
+        let temp = currentWave;
+        currentWave = nextWave;
+        nextWave = temp;
+    }
+
+    //根据上下左右的振幅查，计算影图像偏移量
+    function drawWave()
+    {
+        makeWave();
+        let up , down , left , right , xOffset , yOffset;
+        for(let x = 0 ; x < width ; ++x)
+        {
+            for(let y = 0 ; y < height ; ++y)
+            {
+                if(0 == x){left = 0}else{left = currentWave[x - 1 + y * width]}
+                if(width - 1 == x){right = 0}else{right = currentWave[x + 1 + y * width]}
+                if(0 == y){up = 0}else{up = currentWave[x + (y - 1) * width]}
+                if(height - 1== y){down = 0}else{down = currentWave[x + (y + 1) * width]}
+                xOffset = (x + right - left) | 0;
+                yOffset = (y + up - down) | 0;
+                if(0 > xOffset){xOffset = 0}
+                if(width - 1 < xOffset){xOffset = width -1}
+                if(0 > yOffset){yOffset = 0}
+                if(height - 1 < yOffset){yOffset = height - 1}
+                bufferImg.data[((x + y * width) << 2)] = originImgData.data[((xOffset + yOffset * width) << 2)];
+                bufferImg.data[((x + y * width) << 2) + 1] = originImgData.data[((xOffset + yOffset * width) << 2) + 1];
+                bufferImg.data[((x + y * width) << 2) + 2] = originImgData.data[((xOffset + yOffset * width) << 2) + 2];
+                bufferImg.data[((x + y * width) << 2) + 3] = originImgData.data[((xOffset + yOffset * width) << 2) + 3];
+            }
+        }
+        bufferContext.putImageData(bufferImg , 0 , 0);
+    }
+
+    function animation()
+    {
+      drawWave();
+      myContext.clearRect(0 , 0 , width , height);
+      myContext.drawImage(bufferCanvas , 0 , 0);
+    }
+
+
+    window.onload = function(){
+        bufferContext.drawImage(backGroundImg , 0 , 0 , width , height);
+        originImgData = bufferContext.getImageData(0 , 0 , width , height);
+        document.querySelector("#myCanvas").addEventListener("click" , function(event){
+          let r = 10;
+          let _x = ~~(event.x / scale);
+          let _y = ~~(event.y / scale);
+          for(let x = _x - r ; x < _x + r + 1 ; ++x)
+          {
+              for(let y = _y - r ; y < _y + r + 1 ; ++ y)
+              {
+                  if((x - _x) * (x - _x) + (y - _y) * (y - _y) <= r * r)
+                  {
+                      currentWave[x + y * width] = 100;
+                  }
+              }
+          }
+      });
+      document.querySelector("#myCanvas").addEventListener("mousemove" , function(event){
+        let _x = ~~(event.x / scale);
+        let _y = ~~(event.y / scale);
+      	if(mouseMoveFlag)
+         {
+             //一个锁，怕除法消息太多了
+             // mouseMoveFlag = false;
+             let r = 5;
+             for(let x = _x - r ; x < _x + r + 1 ; ++x)
+             {
+                 for(let y = _y - r ; y < _y + r + 1 ; ++ y)
+                 {
+                     if((x - _x) * (x - _x) + (y - _y) * (y - _y) <= r * r)
+                     {
+                         currentWave[x + y * width] = 80;
+                     }
+                 }
+             }
+         }
+      });
+      //一个锁，怕除触发消息太多了
+      // setInterval(function(){mouseMoveFlag = true} , 15);
+      setInterval(animation , 1000 / 20);
+    }
+  </script>
+</body>
+</html>

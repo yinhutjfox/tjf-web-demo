@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        html , body
+        {
+            margin : 0px ;
+            padding : 0px ;
+            width : 100% ;
+            height : 100% ;
+            /*background : url("2.jpg")*/
+        }
+        .test
+        {
+            background : rgba(255 , 255 , 255 , 0);
+        }
+        .test:after
+        {
+            content: "";
+            position : absolute ;
+            width : 100% ;
+            height : 100% ;
+            left : 0 ;
+            top : 0 ;
+            background: inherit;
+            filter: blur(30px);
+            z-index: 2;
+        }
+        @keyframes dateTdAnimation {
+            0% {transform : rotateZ(10deg) scaleX(1.4) scaleY(1.4)}
+            25% {transform : rotateZ(-10deg) scaleX(1.4) scaleY(1.4)}
+            50% {transform : rotateZ(10deg) scaleX(1.4) scaleY(1.4)}
+            75% {transform : rotateZ(-10deg) scaleX(1.4) scaleY(1.4)}
+            100% {transform : rotateZ(10deg) scaleX(1.4) scaleY(1.4)}
+        }
+        input
+        {
+            margin : 0px ;
+            padding : 0px ;
+            background : rgba(255 , 255 , 255 , 0);
+        }
+        button
+        {
+            margin : 0px ;
+            padding : 0px ;
+            background : rgba(255 , 255 , 255 , 0);
+        }
+        tbody tr td:hover
+        {
+            cursor : pointer ;
+            background : #cecece ;
+            border-radius : 50% ;
+            animation : dateTdAnimation 1s infinite
+        }
+        button:hover
+        {
+            cursor : pointer
+        }
+        .clearfix:after
+        {
+            display : block ;
+            visibility : hidden ;
+            clear : both ;
+            height : 0 ;
+            content : "."
+        }
+        .clearfix
+        {
+            zoom : 1
+        }
+    </style>
+</head>
+<body>
+    <div class = "test" style = "position : absolute ; left : 25% ; top : 30% ; transform : translateX(-50%)"></div>
+    <div style = "position : absolute ; left : 50% ; top : 30% ; transform : translateX(-50%) ; z-index : 999">
+        <div id = "head" style = "position : relative ; width : 100%">
+            <button style = "position : absolute ; width : 25% ; top : 0px ; left : 0px" id = "previousMonth"><<</button>
+            <input id = "month" style = "position : absolute ; width : 50% ; left : 50% ; transform : translateX(-50%) ; text-align : center" readonly />
+            <button style = "position : absolute ; width : 25% ; top : 0px ;  right : 0px" id = "nextMonth">>></button>
+        </div>
+        <table>
+            <thead>
+            <tr>
+                <td>日</td>
+                <td>一</td>
+                <td>二</td>
+                <td>三</td>
+                <td>四</td>
+                <td>五</td>
+                <td>六</td>
+            </tr>
+            </thead>
+        </table>
+    </div>
+    <script>
+        (function(){
+        	document.querySelector("#head").style.height = document.querySelector("#previousMonth").clientHeight + "px";
+	        document.querySelector("#head").style.marginBottom = "10px";
+        })();
+        window.onresize = function(){
+	        document.querySelector("#head").style.height = document.querySelector("#previousMonth").clientHeight + "px";
+        };
+        let g_date = new Date(`${new Date().getFullYear()}-${new Date().getMonth() + 1}-01`);
+        function createCalender(date)
+        {
+        	let currentDate = new Date(`${new Date().getFullYear()}-${new Date().getMonth() + 1}-${new Date().getDate()}`);
+        	let showDate = new Date(`${date.getFullYear()}-${date.getMonth() + 1}-01`);
+	        let endDate = new Date(`${date.getFullYear()}-${date.getMonth() + 1}-01`);
+	        endDate.setMonth(endDate.getMonth() + 1);
+        	let showMonth = showDate.getMonth();
+	        let input = document.querySelector("#month");
+        	let table = document.querySelector("table");
+        	let tbody = document.createElement("tbody");
+        	if(document.querySelector("table tbody"))
+            {
+            	table.removeChild(document.querySelector("table tbody"));
+            }
+            showDate.setDate(showDate.getDate() - showDate.getDay());
+        	while(endDate.getTime() > showDate.getTime())
+            {
+            	let tr = document.createElement("tr");
+            	for(let i = 0 ; i < 7 ; ++i)
+                {
+                	let td = document.createElement("td");
+	                td.style.textAlign = "center";
+	                td.textContent = showDate.getDate().toString();
+	                if(showMonth != showDate.getMonth())
+	                {
+		                td.style.color = "gray";
+	                }
+	                if(showDate.getTime() === currentDate.getTime())
+                    {
+                    	td.style.borderRadius = "50%";
+	                    td.style.background = "yellow";
+                    }
+	                showDate.setDate(showDate.getDate() + 1);
+	                tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            }
+	        input.value = `${date.getFullYear()}年${date.getMonth() + 1}月`;
+            table.appendChild(tbody);
+            document.querySelector(".test").style.width = table.parentElement.clientWidth + "px";
+            document.querySelector(".test").style.height = table.parentElement.clientHeight + "px";
+        }
+        createCalender(g_date);
+        document.querySelector("#previousMonth").addEventListener("click" , function(){
+            g_date.setMonth(g_date.getMonth() - 1);
+	        createCalender(g_date);
+        });
+        document.querySelector("#nextMonth").addEventListener("click" , function(){
+	        g_date.setMonth(g_date.getMonth() + 1);
+	        createCalender(g_date);
+        });
+    </script>
+</body>
+</html>

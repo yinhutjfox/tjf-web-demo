@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <script type = "text/javascript" src = "FrameTest.js"></script>
+</head>
+<body>
+    <div id = "app">
+        <div id = "aaa" :cc = "true" fk-text = "msg">
+        </div>
+    </div>
+
+    </div>
+    <script>
+        let button = document.createElement("button");
+        button.textContent = "click me";
+        button.addEventListener("click" , function(){
+	        let multiplicationTable = document.createElement("table");
+	        for(let i = 1 ; i < 10 ; ++i)
+	        {
+		        let tr = document.createElement("tr");
+		        for(let j = 1 ; j < i + 1 ; ++j)
+		        {
+			        let td = document.createElement("td");
+			        td.textContent = i + "*" + j + "=" + (i * j) + " ";
+			        td.style.width = "100px";
+			        tr.appendChild(td);
+		        }
+		        multiplicationTable.appendChild(tr);
+	        }
+	        document.querySelector("body").appendChild(multiplicationTable);
+        });
+        document.querySelector("body").appendChild(button);
+        let date = new Date();
+        console.log(date.getFullYear());
+
+        let frameTest = new MyFrame({
+            el : "#app" ,
+            data : {
+            	msg : "123" ,
+                list : "ddsdfds" ,
+                abc : "sler"
+            }
+        });
+        // let date = new Date("2018-5-15");
+        // console.log(date);
+        console.log(frameTest);
+    </script>
+</body>
+</html>
