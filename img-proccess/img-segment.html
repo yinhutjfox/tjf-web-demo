@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        html,
+        body {
+            padding: 0px;
+            margin: 0px;
+            background: black;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        canvas {
+            padding: 0px;
+            margin: 0px;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="main-canvas"></canvas>
+    <script>
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+
+        let mainCanvas = document.querySelector('#main-canvas');
+        let bufferCanvas = document.createElement('canvas');
+        let mainContext = mainCanvas.getContext('2d');
+        let bufferContext = bufferCanvas.getContext('2d');
+
+        let segImageData = [];
+        // let originImgData;
+
+
+        mainCanvas.width = width;
+        mainCanvas.height = height;
+        bufferCanvas.width = width;
+        bufferCanvas.height = height;
+
+        let originTargetImg = new Image();
+        originTargetImg.src = 'test.jpg';
+
+        function MyImageData(x, y, imgData) {
+            this.x = x;
+            this.y = y;
+            this.targetX = x;
+            this.targetY = y;
+            this.vx = 0;
+            this.vy = 0;
+            this.imgData = imgData;
+            this.index = 0;
+        }
+
+        MyImageData.prototype.drawImage = function (cxt) {
+            cxt.putImageData(this.imgData, this.x, this.y);
+            this.x += this.vx;
+            this.y += this.vy;
+            if (Math.abs(this.vx) > Math.abs(this.targetX - this.x)) {
+                this.x = this.targetX;
+                this.vx = 0;
+            }
+            if (Math.abs(this.vy) > Math.abs(this.targetY - this.y)) {
+                this.y = this.targetY;
+                this.vy = 0;
+            }
+        }
+
+        MyImageData.prototype.pushPixel = function (r, g, b, a) {
+            let baseIndex = this.index << 2;
+            this.imgData.data[baseIndex] = r;
+            this.imgData.data[baseIndex + 1] = g;
+            this.imgData.data[baseIndex + 2] = b;
+            this.imgData.data[baseIndex + 3] = a;
+            ++this.index;
+        }
+
+        MyImageData.prototype.giveSpeed = function (maxSpeed) {
+            let minSpeed = 20;
+            let baseVx = Math.abs(this.x - this.targetX), baseVy = Math.abs(this.y - this.targetY);
+            if(baseVx < baseVy) {
+                baseVy = ~~(baseVy / baseVx);
+                baseVx = 1;
+            } else {
+                baseVx = ~~(baseVx / baseVy);
+                baseVy = 1;
+            }
+            this.vx = (Math.floor(Math.random() * (maxSpeed - minSpeed)) + minSpeed) * baseVx;
+            this.vy = (Math.floor(Math.random() * (maxSpeed - minSpeed)) + minSpeed) * baseVy;
+            if(this.x > this.targetX) {
+                this.vx *= -1;
+            }
+            if(this.y > this.targetY) {
+                this.vy *= -1;
+            }
+        }
+
+        function animation() {
+            mainContext.clearRect(0, 0, width, height);
+            for (let y = 0; y < segImageData.length; ++y) {
+                for (let x = 0; x < segImageData[y].length; ++x) {
+                    segImageData[y][x].drawImage(mainContext);
+                }
+            }
+            requestAnimationFrame(animation);
+        }
+
+
+        window.onload = function () {
+            let originImgData;
+            let positionRecorder = [];
+            let zoomSize = 4;
+            let segWidth = 5, segHeight = 5;
+            let segWNum = ~~(width / zoomSize / segWidth), segHNum = ~~(height / zoomSize / segHeight);
+            let virtualOx, virtualOy;
+            bufferContext.drawImage(originTargetImg, 0, 0, width / zoomSize, height / zoomSize);
+            originImgData = bufferContext.getImageData(0, 0, segWNum * segWidth, segHNum * segHeight);
+            segWidth = originImgData.width / segWNum, segHeight = originImgData.height / segHNum;
+            virtualOx = ~~(width / 2 - width / (zoomSize << 1));
+            virtualOy = ~~(height / 2 - height / (zoomSize << 1));
+            for (let i = 0; i < segHNum; ++i) {
+                let rowTemp = [];
+                for (let j = 0; j < segWNum; ++j) {
+                    let myImgData = new MyImageData(virtualOx + j * segWidth, virtualOy + i * segHeight, mainContext.createImageData(segWidth, segHeight));
+                    if (0 === j % 2) {
+                        myImgData.targetX = segWidth * j / 2;
+                    } else {
+                        myImgData.targetX = width - originImgData.width / 2 + segWidth * (j - 1) / 2;
+                    }
+                    if (0 === i % 2) {
+                        myImgData.targetY = segHeight * i / 2;
+                    } else {
+                        myImgData.targetY = height - originImgData.height / 2 + segHeight * (i - 1) / 2;
+                    }
+                    rowTemp.push(myImgData);
+                    positionRecorder.push({
+                        x: j,
+                        y: i
+                    })
+                }
+                segImageData.push(rowTemp);
+            }
+            for (let y = 0; y < originImgData.height; ++y) {
+                for (let x = 0; x < originImgData.width; ++x) {
+                    let baseIndex = (x + y * originImgData.width) << 2;
+                    segImageData[~~(y / segHeight)][~~(x / segWidth)].pushPixel(
+                        originImgData.data[baseIndex],
+                        originImgData.data[baseIndex + 1],
+                        originImgData.data[baseIndex + 2],
+                        originImgData.data[baseIndex + 3]
+                    )
+                }
+            }
+            animation();
+            function randomMove() {
+                let makeNum = Math.floor(Math.random() * (80 - 20)) + 20;
+                if(makeNum > positionRecorder.length) {
+                    for(let index = 0; index < positionRecorder.length; ++index) {
+                        segImageData[positionRecorder[index].y][positionRecorder[index].x].giveSpeed(Math.floor(Math.random() * (30 - 2)) + 2);
+                    }
+                    positionRecorder = [];
+                } else {
+                    for(let i = 0; i < makeNum; ++i) {
+                        let index = Math.floor(Math.random() * positionRecorder.length);
+                        segImageData[positionRecorder[index].y][positionRecorder[index].x].giveSpeed(Math.floor(Math.random() * (30 - 2)) + 2);
+                        positionRecorder.splice(index, 1);
+                    }
+                    setTimeout(randomMove, Math.floor(Math.random() * (500 - 100)) + 100)
+                }
+            }
+            randomMove();
+
+        }
+
+    </script>
+</body>
+
+</html>
